@@ -73,6 +73,10 @@ func (s *SQLParcelStore) GetByClient(client int) ([]Parcel, error) {
 		res = append(res, result)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return res, nil
 }
 
@@ -89,20 +93,34 @@ func (s *SQLParcelStore) SetStatus(number int, status string) error {
 func (s *SQLParcelStore) SetAddress(number int, address string) error {
 	// обновляем адрес в таблице parcel
 	// менять адрес можно только если статус зарегистрирован
-	var statusRegistr string
+	// var statusRegistr string
 
-	err := s.db.QueryRow("SELECT status FROM parcel WHERE number = ?", number).Scan(&statusRegistr)
+	// err := s.db.QueryRow("SELECT status FROM parcel WHERE number = ?", number).Scan(&statusRegistr)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// if statusRegistr != ParcelStatusRegistered {
+	// 	return errors.New("у посылки незарегистрирован статус, нельзя обновить адрес")
+	// }
+
+	// _, err = s.db.Exec("UPDATE parcel SET address = ? WHERE number = ?", address, number)
+	// if err != nil {
+	// 	return err
+	// }
+
+	result, err := s.db.Exec("UPDATE parcel SET address = ? WHERE number = ? AND status = ?", address, number, ParcelStatusRegistered)
 	if err != nil {
 		return err
 	}
 
-	if statusRegistr != ParcelStatusRegistered {
-		return errors.New("у посылки незарегистрирован статус, нельзя обновить адрес")
-	}
-
-	_, err = s.db.Exec("UPDATE parcel SET address = ? WHERE number = ?", address, number)
+	rows, err := result.RowsAffected()
 	if err != nil {
 		return err
+	}
+
+	if rows == 0 {
+		return errors.New("нельзя обновить адрес у посылки")
 	}
 
 	return nil

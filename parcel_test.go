@@ -32,34 +32,31 @@ func getTestParcel() Parcel {
 func TestAddGetDelete(t *testing.T) {
 
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
 
 	// add
-	// добавьте новую посылку в БД,
-	// убедитесь в отсутствии ошибки и наличии идентификатора
 	number, err := store.Add(parcel)
 	require.NoError(t, err)
 	require.NotEmpty(t, number)
 	// get
-	// получите только что добавленную посылку, убедитесь в отсутствии ошибки
-	// проверьте, что значения всех полей в полученном объекте совпадают
-	// со значениями полей в переменной parcel
+
 	parcels, err := store.Get(number)
 	require.NoError(t, err)
-	require.Equal(t, parcel.Client, parcels.Client)
-	require.Equal(t, parcel.Status, parcels.Status)
-	require.Equal(t, parcel.Address, parcels.Address)
-	require.Equal(t, parcel.CreatedAt, parcels.CreatedAt)
+
+	parcel.Number = number
+
+	require.Equal(t, parcel, parcels)
+
+	// require.Equal(t, parcel.Client, parcels.Client)
+	// require.Equal(t, parcel.Status, parcels.Status)
+	// require.Equal(t, parcel.Address, parcels.Address)
+	// require.Equal(t, parcel.CreatedAt, parcels.CreatedAt)
 
 	// delete
-	// удалите добавленную посылку, убедитесь в отсутствии ошибки
-	// проверьте, что посылку больше нельзя получить из БД
 	err = store.Delete(number)
 	require.NoError(t, err)
 
@@ -71,9 +68,7 @@ func TestAddGetDelete(t *testing.T) {
 func TestSetAddress(t *testing.T) {
 
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
@@ -104,9 +99,7 @@ func TestSetAddress(t *testing.T) {
 func TestSetStatus(t *testing.T) {
 
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
@@ -137,9 +130,7 @@ func TestSetStatus(t *testing.T) {
 func TestGetByClient(t *testing.T) {
 
 	db, err := sql.Open("sqlite", "tracker.db")
-	if err != nil {
-		require.NoError(t, err)
-	}
+	require.NoError(t, err)
 	defer db.Close()
 
 	store := NewParcelStore(db)
@@ -186,11 +177,13 @@ func TestGetByClient(t *testing.T) {
 		// убедитесь, что все посылки из storedParcels есть в parcelMap
 		// убедитесь, что значения полей полученных посылок заполнены верно
 		expct, ok := parcelMap[parcel.Number]
-		require.True(t, ok)
-		require.Equal(t, expct.Client, parcel.Client)
-		require.Equal(t, expct.Status, parcel.Status)
-		require.Equal(t, expct.Address, parcel.Address)
-		require.Equal(t, expct.CreatedAt, parcel.CreatedAt)
+		require.True(t, ok, "посылка под номером %d", parcel.Number)
+		require.Equal(t, expct, parcel)
+
+		// require.Equal(t, expct.Client, parcel.Client)
+		// require.Equal(t, expct.Status, parcel.Status)
+		// require.Equal(t, expct.Address, parcel.Address)
+		// require.Equal(t, expct.CreatedAt, parcel.CreatedAt)
 
 	}
 }
