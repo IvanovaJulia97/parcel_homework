@@ -2,59 +2,148 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 )
 
-type ParcelStore struct {
+type SQLParcelStore struct {
 	db *sql.DB
 }
 
 func NewParcelStore(db *sql.DB) ParcelStore {
-	return ParcelStore{db: db}
+	return &SQLParcelStore{db: db}
 }
 
-func (s ParcelStore) Add(p Parcel) (int, error) {
-	// реализуйте добавление строки в таблицу parcel, используйте данные из переменной p
+func (s *SQLParcelStore) Add(p Parcel) (int, error) {
+	// добавляем строку в таблицу parcel
+	// Данные Parcel:
+	// Number    int
+	// Client    int
+	// Status    string
+	// Address   string
+	// CreatedAt string
+	res, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (?, ?, ?, ?)",
+		p.Client, p.Status, p.Address, p.CreatedAt)
+
+	if err != nil {
+		return 0, err
+	}
+
+	number, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
 
 	// верните идентификатор последней добавленной записи
-	return 0, nil
+	return int(number), nil
 }
 
-func (s ParcelStore) Get(number int) (Parcel, error) {
-	// реализуйте чтение строки по заданному number
-	// здесь из таблицы должна вернуться только одна строка
+func (s *SQLParcelStore) Get(number int) (Parcel, error) {
+	// реализуем чтение строки по заданному number
 
-	// заполните объект Parcel данными из таблицы
+	row := s.db.QueryRow("SELECT number, client, status, address, created_at FROM parcel WHERE number = ?", number)
+
 	p := Parcel{}
+	err := row.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
+	if err != nil {
+		return p, err
+	}
 
 	return p, nil
 }
 
-func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
-	// реализуйте чтение строк из таблицы parcel по заданному client
+func (s *SQLParcelStore) GetByClient(client int) ([]Parcel, error) {
+	// реализуем чтение строк из таблицы parcel по заданному client
 	// здесь из таблицы может вернуться несколько строк
+	rows, err := s.db.Query("SELECT number, client, status, address, created_at FROM parcel WHERE client = ?", client)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-	// заполните срез Parcel данными из таблицы
+	// заполняем срез Parcel данными из таблицы
 	var res []Parcel
+	for rows.Next() {
+		result := Parcel{}
+
+		err := rows.Scan(&result.Number, &result.Client, &result.Status, &result.Address, &result.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		res = append(res, result)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return res, nil
 }
 
-func (s ParcelStore) SetStatus(number int, status string) error {
-	// реализуйте обновление статуса в таблице parcel
+func (s *SQLParcelStore) SetStatus(number int, status string) error {
+	// обновляем статус в таблице parcel
+	_, err := s.db.Exec("UPDATE parcel SET status = ? WHERE number = ?", status, number)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (s ParcelStore) SetAddress(number int, address string) error {
-	// реализуйте обновление адреса в таблице parcel
-	// менять адрес можно только если значение статуса registered
+func (s *SQLParcelStore) SetAddress(number int, address string) error {
+	// обновляем адрес в таблице parcel
+	// менять адрес можно только если статус зарегистрирован
+	// var statusRegistr string
+
+	// err := s.db.QueryRow("SELECT status FROM parcel WHERE number = ?", number).Scan(&statusRegistr)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// if statusRegistr != ParcelStatusRegistered {
+	// 	return errors.New("у посылки незарегистрирован статус, нельзя обновить адрес")
+	// }
+
+	// _, err = s.db.Exec("UPDATE parcel SET address = ? WHERE number = ?", address, number)
+	// if err != nil {
+	// 	return err
+	// }
+
+	result, err := s.db.Exec("UPDATE parcel SET address = ? WHERE number = ? AND status = ?", address, number, ParcelStatusRegistered)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return errors.New("нельзя обновить адрес у посылки")
+	}
 
 	return nil
 }
 
-func (s ParcelStore) Delete(number int) error {
-	// реализуйте удаление строки из таблицы parcel
-	// удалять строку можно только если значение статуса registered
+func (s *SQLParcelStore) Delete(number int) error {
+	// удаляем строку из таблицы parcel
+	// удалять строку можно только если статус зарегистрирован
+	var statusRegistr string
+
+	err := s.db.QueryRow("SELECT status FROM parcel WHERE number = ?", number).Scan(&statusRegistr)
+	if err != nil {
+		return err
+	}
+
+	// if statusRegistr != ParcelStatusRegistered {
+	//  return errors.New("у посылки незарегистрирован статус, нельзя удалить строку")
+	// }
+
+	_, err = s.db.Exec("DELETE FROM parcel WHERE number = ?", number)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

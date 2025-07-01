@@ -22,6 +22,15 @@ type Parcel struct {
 	CreatedAt string
 }
 
+type ParcelStore interface {
+	Add(p Parcel) (int, error)
+	Get(number int) (Parcel, error)
+	GetByClient(client int) ([]Parcel, error)
+	SetStatus(number int, status string) error
+	SetAddress(number int, address string) error
+	Delete(number int) error
+}
+
 type ParcelService struct {
 	store ParcelStore
 }
@@ -97,9 +106,18 @@ func (s ParcelService) Delete(number int) error {
 }
 
 func main() {
-	// настройте подключение к БД
+	// подключаемся к базе данных SQLite
+	db, err := sql.Open("sqlite", "tracker.db")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer db.Close()
 
-	store := // создайте объект ParcelStore функцией NewParcelStore
+	// создаем объект ParcelStore, используя конструкцию SQLParcelStore
+	store := NewParcelStore(db) // здесь создается объект SQLParcelStore
+
+	// создаем объект ParcelService, передаем store
 	service := NewParcelService(store)
 
 	// регистрация посылки
